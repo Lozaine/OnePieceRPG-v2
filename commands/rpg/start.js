@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
 const { races } = require('../../data/characterOptions');
 
 module.exports = {
@@ -29,7 +29,7 @@ module.exports = {
 		await interaction.reply({
             embeds: [embed],
             components: [row],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
 	},
 };
