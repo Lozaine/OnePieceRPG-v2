@@ -1,0 +1,23 @@
+{
+  "name": "one-piece-rpg-bot",
+  "version": "1.0.0",
+  "description": "An RPG bot based on the One Piece world using Discord Components V2.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .",
+    "deploy": "node deploy-commands.js"
+  },
+  "keywords": [
+    "discord",
+    "discord.js",
+    "rpg",
+    "one-piece"
+  ],
+  "author": "Gemini",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "enmap": "^5.9.8"
+  }
+}
