@@ -1,3 +1,4 @@
+
 const { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { races, origins, dreams } = require('../data/characterOptions');
 const allQuests = require('../data/quests');
@@ -31,18 +32,24 @@ module.exports = {
 				await command.execute(interaction);
 			} catch (error) {
 				console.error(error);
-				await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+				if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+                } else {
+                    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+                }
 			}
 			return;
 		}
 
 		// Character Creation Button Logic
 		if (interaction.isButton() && interaction.customId.startsWith('start_')) {
+            await interaction.deferUpdate(); // Defer the interaction immediately
+            
 			if (interaction.customId === 'start_confirm') {
                 // Since we store creation data on the player object now, we get it from the DB
 				const player = client.players.get(interaction.user.id);
                 if (!player?.character?.race || !player?.character?.origin || !player?.character?.dream) {
-					return interaction.update({ content: 'Your character data is incomplete. Please use `/start` again.', embeds: [], components: [] });
+					return interaction.editReply({ content: 'Your character data is incomplete. Please use `/start` again.', embeds: [], components: [] });
 				}
 
 				// Set initial player progression
@@ -72,13 +79,14 @@ module.exports = {
 					.setTitle('Welcome to the Great Pirate Era!')
 					.setDescription(`Your adventure as a **${player.character.race}** begins now in **${player.progression.location}**!\n\nUse \`/quests\` to see your first objective and \`/island\` to interact with the world.`);
 				
-				await interaction.update({ embeds: [embed], components: [] });
+				await interaction.editReply({ embeds: [embed], components: [] });
 			}
-            // ... other character creation buttons
-		}
+        }
 
         // Handle Quest-related Buttons
         if (interaction.isButton() && !interaction.customId.startsWith('start_')) {
+            await interaction.deferUpdate(); // Defer the interaction immediately
+            
             const player = client.players.get(interaction.user.id);
             if (!player) return; // Should not happen if slash command check is working
 
@@ -98,14 +106,15 @@ module.exports = {
                     .setDescription("You sneak around the base and find forged documents in a supply closet, confirming Lt. Rokkaku's suspicions. You've gained some power from the experience!")
                     .setFooter({ text: "Your main story quest has been updated." });
                 
-                await interaction.update({ embeds: [embed], components: [] });
+                await interaction.editReply({ embeds: [embed], components: [] });
             }
             // ... Add handlers for pirate, revolutionary, and neutral first steps here
         }
 
-
 		// This part remains largely the same, but now saves to the database
 		if (interaction.isStringSelectMenu() && interaction.customId.startsWith('start_')) {
+            await interaction.deferUpdate(); // Defer the interaction immediately
+            
             // Get or create a temporary player object for character creation
             const player = client.players.ensure(interaction.user.id, { character: {} });
 
@@ -125,7 +134,7 @@ module.exports = {
                     .setTitle('Character Creation: Step 2')
                     .setDescription(`**Race Selected:** ${selectedRaceInfo.label}\n*${selectedRaceInfo.details}*`)
                     .addFields({ name: 'Next, Choose Your Origin', value: 'Where does your story begin? This sets your starting location and faction.' });
-				await interaction.update({ embeds: [embed], components: [row] });
+				await interaction.editReply({ embeds: [embed], components: [row] });
 			} else if (interaction.customId === 'start_select_origin') {
                 player.character.origin = interaction.values[0];
                 client.players.set(interaction.user.id, player);
@@ -140,7 +149,7 @@ module.exports = {
                     .setTitle('Character Creation: Step 3')
                     .setDescription('Your choices so far are shaping your destiny.')
                     .addFields({ name: 'Next, Choose Your Dream', value: 'What is the ultimate goal that drives you? This grants starting skills and equipment.' });
-                await interaction.update({ embeds: [embed], components: [row] });
+                await interaction.editReply({ embeds: [embed], components: [row] });
             } else if (interaction.customId === 'start_select_dream') {
                 player.character.dream = interaction.values[0];
                 client.players.set(interaction.user.id, player);
@@ -156,7 +165,7 @@ module.exports = {
                         { name: 'Origin', value: origins.find(o => o.value === player.character.origin).label },
                         { name: 'Dream', value: dreams.find(d => d.value === player.character.dream).label }
                     );
-                await interaction.update({ embeds: [embed], components: [row] });
+                await interaction.editReply({ embeds: [embed], components: [row] });
             }
 		}
 	},
