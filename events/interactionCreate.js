@@ -442,7 +442,8 @@ async function handleSelectMenuInteraction(interaction) {
     const player = client.players.ensure(interaction.user.id, { character: {} });
 
     if (interaction.customId === 'start_select_race') {
-        player.character.race = interaction.values[0];
+        // Reset character object to ensure a clean slate
+        player.character = { race: interaction.values[0] };
         client.players.set(interaction.user.id, player);
 
         const selectedRaceInfo = races.find(r => r.value === player.character.race);
@@ -471,6 +472,8 @@ async function handleSelectMenuInteraction(interaction) {
 
     } else if (interaction.customId === 'start_select_origin') {
         player.character.origin = interaction.values[0];
+        // Clear dream selection in case user is changing their origin
+        delete player.character.dream;
         client.players.set(interaction.user.id, player);
 
         const dreamMenu = new StringSelectMenuBuilder()
