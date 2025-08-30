@@ -1,3 +1,4 @@
+// events/interactionCreate.js - Complete enhanced version
 const { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { races, origins, dreams } = require('../data/characterOptions');
 const allQuests = require('../data/quests');
@@ -12,11 +13,13 @@ function getQuestThumbnail(player, context = 'default') {
         neutral: 'https://i.imgur.com/baratie.png',
         default: 'https://i.imgur.com/onepiece_logo.png',
         success: 'https://i.imgur.com/treasure.png',
-        error: 'https://i.imgur.com/warning.png'
+        error: 'https://i.imgur.com/warning.png',
+        support: 'https://i.imgur.com/support_icon.png'
     };
 
     if (context === 'success') return thumbnails.success;
     if (context === 'error') return thumbnails.error;
+    if (context === 'support') return thumbnails.support;
     return thumbnails[player?.character?.origin] || thumbnails.default;
 }
 
@@ -116,7 +119,7 @@ async function progressQuest(interaction, player, questId, customMessage = null)
     try {
         const currentQuest = getCurrentQuest(player);
         if (!currentQuest) {
-            return await sendErrorResponse(interaction, 'No active quest found. Please check your quest log.', true);
+            return await sendErrorResponse(interaction, 'No active quest found. Please check your quest log with `/quests`.', true);
         }
 
         // Check if player meets quest requirements (can be expanded)
@@ -198,7 +201,7 @@ module.exports = {
         if (interaction.isChatInputCommand()) {
             // Enhanced player existence check
             const playerExists = client.players.has(interaction.user.id);
-            if (interaction.commandName !== 'start' && interaction.commandName !== 'ping' && !playerExists) {
+            if (interaction.commandName !== 'start' && interaction.commandName !== 'ping' && interaction.commandName !== 'help' && !playerExists) {
                 const embed = new EmbedBuilder()
                     .setColor(0xFF6B35)
                     .setTitle('🚀 Adventure Awaits!')
@@ -213,8 +216,8 @@ module.exports = {
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // Validate player state for non-start commands
-            if (playerExists && interaction.commandName !== 'start' && interaction.commandName !== 'ping') {
+            // Validate player state for commands that require character data
+            if (playerExists && ['profile', 'quests', 'island', 'stats'].includes(interaction.commandName)) {
                 const player = client.players.get(interaction.user.id);
                 const validationErrors = validatePlayerState(player);
 
@@ -281,6 +284,44 @@ module.exports = {
 async function handleButtonInteraction(interaction) {
     const { client } = interaction;
 
+    // Help Support Button
+    if (interaction.customId === 'help_support') {
+        const embed = new EmbedBuilder()
+            .setColor(0x7289DA)
+            .setTitle('🆘 Additional Help & Support')
+            .setDescription('Need more assistance with your One Piece adventure?')
+            .setThumbnail(getQuestThumbnail(null, 'support'))
+            .addFields(
+                {
+                    name: '📚 Common Issues',
+                    value: '• **Commands not working?** Make sure you\'ve created a character with `/start`\n• **Character data missing?** Use `/start` to recreate your character\n• **Quest stuck?** Check `/quests` for current objectives\n• **Can\'t progress?** Use `/island` to see available actions',
+                    inline: false
+                },
+                {
+                    name: '🎮 Gameplay Tips',
+                    value: '• Always check `/quests` when unsure what to do next\n• Use `/island` frequently to discover new opportunities\n• Your choices in character creation affect your entire journey\n• Power grows through completing quest objectives',
+                    inline: false
+                },
+                {
+                    name: '🔧 Technical Support',
+                    value: '• Bot not responding? Use `/ping` to check connection\n• Commands missing? Contact server administrator\n• Data lost? Character recreation may be necessary\n• Report bugs to the development team',
+                    inline: false
+                },
+                {
+                    name: '🌟 Getting the Most Out of Your Adventure',
+                    value: '• Read quest descriptions carefully for lore and context\n• Each race offers unique advantages and storylines\n• Explore different origin paths for varied experiences\n• Progress is saved automatically after each action',
+                    inline: false
+                }
+            )
+            .setFooter({ 
+                text: 'Still need help? Contact the server administrators or development team' 
+            })
+            .setTimestamp();
+
+        await interaction.update({ embeds: [embed], components: [] });
+        return;
+    }
+
     // Character Creation Confirmation
     if (interaction.customId === 'start_confirm') {
         const player = client.players.get(interaction.user.id);
@@ -339,16 +380,44 @@ async function handleQuestButton(interaction, player) {
             message: "You carefully investigate the Marine base and discover forged documents in Captain Morgan's office, confirming Lt. Rokkaku's suspicions about the corruption.",
             nextLocation: null // stays in same location
         },
+        'marine_base_report': {
+            message: "You report your findings to Lt. Rokkaku, who thanks you for your courage. Together, you begin planning how to expose Morgan's corruption to Marine Headquarters.",
+            nextLocation: null
+        },
         'mansion_visit': {
             message: "You visit the grand mansion and meet Kaya, the wealthy heiress. Her butler Klahadore seems suspicious, and you sense an opportunity for adventure.",
+            nextLocation: null
+        },
+        'mansion_investigate': {
+            message: "Your investigation reveals that Klahadore is actually Captain Kuro, a notorious pirate! You must find a way to protect Kaya and expose his true identity.",
+            nextLocation: null
+        },
+        'village_explore': {
+            message: "You explore the village and meet the locals, including the young storyteller Usopp. The villagers share rumors about strange activities at the mansion.",
             nextLocation: null
         },
         'ruins_search': {
             message: "Among the ancient ruins, you find a hidden scholar's message that reveals crucial evidence of the World Government's cover-up of Ohara's true purpose.",
             nextLocation: null
         },
+        'tree_of_knowledge': {
+            message: "You examine the burned Tree of Knowledge, feeling the weight of lost history. The ancient texts hidden within contain fragments of the truth.",
+            nextLocation: null
+        },
+        'preserve_evidence': {
+            message: "You carefully preserve the evidence you've found, knowing it could change the world. The Revolutionary Army will be very interested in these discoveries.",
+            nextLocation: null
+        },
         'baratie_apply': {
             message: "You impress the fighting chefs with your determination and earn a place in the Baratie's kitchen. Chef Zeff sees potential in you.",
+            nextLocation: null
+        },
+        'kitchen_trial': {
+            message: "You prove yourself in both cooking and combat, earning the respect of the Baratie's crew. Your skills grow stronger through their unique training methods.",
+            nextLocation: null
+        },
+        'dining_area': {
+            message: "Working in the dining area, you meet many interesting pirates and Marines. Each encounter teaches you more about the world beyond these floating seas.",
             nextLocation: null
         }
     };
@@ -360,7 +429,7 @@ async function handleQuestButton(interaction, player) {
         }
         await progressQuest(interaction, player, interaction.customId, handler.message);
     } else {
-        await sendErrorResponse(interaction, 'Unknown quest action. This might be a bug.', true);
+        await sendErrorResponse(interaction, 'Unknown quest action. This might be a bug - please report it!', true);
     }
 }
 
