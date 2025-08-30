@@ -1,0 +1,140 @@
+const { 
+    Events, 
+    MessageFlags, 
+    SectionBuilder,
+    TextDisplayBuilder, 
+    ThumbnailBuilder,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder
+} = require('discord.js');
+
+const allQuests = require('../data/quests');
+const { races, origins, dreams } = require('../data/characterOptions');
+
+function getCurrentQuest(player) {
+    if (!player || !player.progression || !player.progression.msq) return null;
+    const { saga, arc, origin, step } = player.progression.msq;
+    return allQuests[saga]?.[arc]?.[origin]?.[step] || null;
+}
+
+const questDescriptions = {
+    marine: ["You find a hidden ledger detailing illegal transactions.","A child hands you a drawing of a 'scary man' who took their family's food.","An old woman whispers about the unjust imprisonment of her son.","You overhear two marines nervously discussing a secret order from Morgan.","You discover a crate of counterfeit Berries hidden in the storeroom."],
+    pirate: ["You successfully outsmart Usopp in a storytelling contest.","You help the Usopp Pirates build a new 'secret base'.","You retrieve a rare beetle for Usopp's collection.","You win a sharpshooting contest against Usopp (somehow).","You defend the village from a group of rowdy mountain bandits."],
+    revolutionary: ["A hidden carving on a stone pillar reveals the first part of the cipher.","You find a water-damaged book with a key symbol inside.","A series of numbers are etched into the bark of the Tree of Knowledge.","You solve a riddle left by a scholar to reveal the next clue.","A constellation map in a hidden chamber provides the final key."],
+    neutral: ["You perfectly cook a Sea King steak, earning a nod from Patty.","You create a spicy stew that invigorates the chefs.","You bake a dessert so delicious it momentarily stops the fighting.","You manage to turn meager ingredients into a feast for the defenders.","Your quick thinking in the kitchen prevents a fire from spreading."],
+};
+
+module.exports = {
+	name: Events.InteractionCreate,
+	async execute(interaction) {
+		const { client } = interaction;
+
+		if (interaction.isChatInputCommand()) {
+            const playerExists = client.players.has(interaction.user.id);
+            if (interaction.commandName !== 'start' && !playerExists) {
+                return interaction.reply({
+                    content: 'You need to create a character first! Use the `/start` command to begin your adventure.',
+                    flags: MessageFlags.Ephemeral, // FIX: Use flags instead of ephemeral
+                });
+            }
+			const command = interaction.client.commands.get(interaction.commandName);
+			if (!command) return;
+			try {
+				await command.execute(interaction);
+			} catch (error) {
+				console.error(error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+                } else {
+                    await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
+                }
+			}
+			return;
+		}
+
+        if (interaction.isStringSelectMenu() && interaction.customId.startsWith('start_')) {
+            await interaction.deferUpdate(); // FIX: Defer the interaction immediately
+            const player = client.players.ensure(interaction.user.id, { character: {} });
+			
+            if (interaction.customId === 'start_select_race') {
+				player.character.race = interaction.values[0];
+                client.players.set(interaction.user.id, player);
+				const originMenu = new StringSelectMenuBuilder().setCustomId('start_select_origin').setPlaceholder('Select your origin story').addOptions(origins.map(o => ({ label: o.label, description: o.description, value: o.value })));
+				const row = new ActionRowBuilder().addComponents(originMenu);
+                const selectedRaceInfo = races.find(r => r.value === player.character.race);
+                const embed = new EmbedBuilder().setColor(0x0099FF).setTitle('Character Creation: Step 2').setDescription(`**Race Selected:** ${selectedRaceInfo.label}\n*${selectedRaceInfo.details}*`).addFields({ name: 'Next, Choose Your Origin', value: 'Where does your story begin? This sets your starting location and faction.' });
+				await interaction.editReply({ embeds: [embed], components: [row] }); // FIX: Use editReply
+			} else if (interaction.customId === 'start_select_origin') {
+                player.character.origin = interaction.values[0];
+                client.players.set(interaction.user.id, player);
+                const dreamMenu = new StringSelectMenuBuilder().setCustomId('start_select_dream').setPlaceholder('Select your ultimate dream').addOptions(dreams.map(d => ({ label: d.label, description: d.description, value: d.value })));
+                const row = new ActionRowBuilder().addComponents(dreamMenu);
+                const embed = new EmbedBuilder().setColor(0x0099FF).setTitle('Character Creation: Step 3').setDescription('Your choices so far are shaping your destiny.').addFields({ name: 'Next, Choose Your Dream', value: 'What is the ultimate goal that drives you?' });
+                await interaction.editReply({ embeds: [embed], components: [row] }); // FIX: Use editReply
+            } else if (interaction.customId === 'start_select_dream') {
+                player.character.dream = interaction.values[0];
+                client.players.set(interaction.user.id, player);
+                const confirmButton = new ButtonBuilder().setCustomId('start_confirm').setLabel('Confirm').setStyle(ButtonStyle.Success);
+                const row = new ActionRowBuilder().addComponents(confirmButton);
+                const embed = new EmbedBuilder().setColor(0x1EA400).setTitle('Character Confirmation').setDescription('Please review your choices to begin your adventure!').addFields({ name: 'Race', value: races.find(r => r.value === player.character.race).label },{ name: 'Origin', value: origins.find(o => o.value === player.character.origin).label },{ name: 'Dream', value: dreams.find(d => d.value === player.character.dream).label });
+                await interaction.editReply({ embeds: [embed], components: [row] }); // FIX: Use editReply
+            }
+        }
+        
+		if (interaction.isButton()) {
+            await interaction.deferUpdate(); // FIX: Defer the interaction immediately
+            const player = client.players.get(interaction.user.id);
+            if (!player) return;
+
+            if (interaction.customId === 'start_confirm') {
+                player.progression = { msq: { saga: 'East Blue', arc: 'Romance Dawn', origin: player.character.origin, step: 1, }, location: '', };
+                player.stats = { power: 10 };
+                switch (player.character.origin) {
+                    case 'marine': player.progression.location = 'Shells Town'; break;
+                    case 'pirate': player.progression.location = 'Syrup Village'; break;
+                    case 'revolutionary': player.progression.location = 'Ohara Ruins'; break;
+                    case 'neutral': player.progression.location = 'The Baratie'; break;
+                }
+                client.players.set(interaction.user.id, player);
+				const welcomeText = `Your adventure as a **${player.character.race}** begins now in **${player.progression.location}**!\n\nUse \`/quests\` to see your first objective and \`/island\` to interact with the world.`;
+                const textDisplay = new TextDisplayBuilder().setContent(`**Welcome to the Great Pirate Era!**\n${welcomeText}`);
+				await interaction.editReply({ components: [textDisplay], embeds: [], flags: MessageFlags.IsComponentsV2 }); // FIX: Use editReply
+                return;
+            }
+
+            const quest = getCurrentQuest(player);
+            if (!quest) return await interaction.editReply({ components: interaction.message.components });
+
+            let questProgressed = false;
+            const questActions = { 'marine_base_investigate': { step: 1 },'gather_testimonies': { step: 2 },'mansion_visit': { step: 1 },'usopp_challenges': { step: 2 },'ruins_search': { step: 1 },'decipher_clues': { step: 2 },'baratie_apply': { step: 1 },'cook_for_chefs': { step: 2 } };
+            const action = questActions[interaction.customId];
+            if (action && player.progression.msq.step === action.step) {
+                player.progression.msq.step++;
+                questProgressed = true;
+            }
+
+            if(questProgressed){
+                const descriptions = questDescriptions[player.character.origin];
+                const randomDescription = descriptions[Math.floor(Math.random() * descriptions.length)];
+                const textDisplay = new TextDisplayBuilder().setContent(`**Quest Progress!**\n${randomDescription}`);
+                const updatedQuest = getCurrentQuest(player);
+                if (updatedQuest) {
+                    const thumbnail = new ThumbnailBuilder({ media: { url: updatedQuest.thumbnail } });
+                    const section = new SectionBuilder().addTextDisplayComponents(textDisplay).setThumbnailAccessory(thumbnail);
+                    await interaction.editReply({ components: [section], flags: MessageFlags.IsComponentsV2, }); // FIX: Use editReply
+                } else {
+                     const finishedText = new TextDisplayBuilder().setContent(`**Arc Complete!**\nYou have completed the Romance Dawn arc. New adventures await!`);
+                     await interaction.editReply({ components: [finishedText], flags: MessageFlags.IsComponentsV2, }); // FIX: Use editReply
+                }
+                client.players.set(interaction.user.id, player);
+            } else {
+                // If the button was clicked but nothing happened, just reset the message to its current state
+                // This prevents the "Interaction failed" error from showing to the user.
+                await interaction.editReply({ components: interaction.message.components });
+            }
+        }
+	},
+};
