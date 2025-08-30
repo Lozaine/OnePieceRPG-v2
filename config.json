@@ -1,3 +1,18 @@
 {
-    "botName": "One Piece RPG"
+    "botName": "One Piece Adventure Bot",
+    "version": "2.0.0",
+    "author": "Your Name",
+    "supportServer": "https://discord.gg/yourserver",
+    "website": "https://yourwebsite.com",
+    "features": {
+        "questSystem": true,
+        "characterCustomization": true,
+        "locationExploration": true,
+        "progressTracking": true
+    },
+    "limits": {
+        "maxCharactersPerUser": 1,
+        "questCooldown": 0,
+        "maxPowerLevel": 1000
+    }
 }

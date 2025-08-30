@@ -1,23 +1,24 @@
 {
-  "name": "one-piece-rpg-bot",
-  "version": "1.0.0",
-  "description": "An RPG bot based on the One Piece world using Discord Components V2.",
-  "main": "index.js",
-  "scripts": {
-    "start": "node .",
-    "deploy": "node deploy-commands.js"
-  },
-  "keywords": [
-    "discord",
-    "discord.js",
-    "rpg",
-    "one-piece"
-  ],
-  "author": "Gemini",
-  "license": "ISC",
-  "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
-    "enmap": "^5.9.8"
-  }
+    "name": "one-piece-discord-bot",
+    "version": "2.0.0",
+    "description": "Enhanced One Piece adventure bot for Discord",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js",
+        "deploy": "node deploy-commands.js",
+        "backup": "node scripts/backup-database.js",
+        "restore": "node scripts/restore-database.js"
+    },
+    "dependencies": {
+        "discord.js": "^14.0.0",
+        "enmap": "^5.8.7",
+        "dotenv": "^16.0.0"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.0"
+    },
+    "keywords": ["discord", "bot", "one-piece", "rpg", "adventure"],
+    "author": "Your Name",
+    "license": "MIT"
 }
