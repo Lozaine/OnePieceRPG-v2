@@ -7,9 +7,9 @@ const allIslands = require('../data/islands');
 // Helper function to get quest thumbnails based on context
 function getQuestThumbnail(player, context = 'default') {
     const thumbnails = {
-        marine: 'https://i.imgur.com/marine_logo.png',
-        pirate: 'https://i.imgur.com/pirate_flag.png',
-        revolutionary: 'https://i.imgur.com/revolution.png',
+        marine: 'https://i.imgur.com/NJbOWWe.png',
+        pirate: 'https://i.imgur.com/LXdmGSh.png',
+        revolutionary: 'https://i.imgur.com/xJGXwAk.png',
         neutral: 'https://i.imgur.com/baratie.png',
         default: 'https://i.imgur.com/onepiece_logo.png',
         success: 'https://i.imgur.com/treasure.png',
